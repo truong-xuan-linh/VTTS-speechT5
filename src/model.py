@@ -29,7 +29,7 @@ vocoder = SpeechT5HifiGan.from_pretrained("microsoft/speecht5_hifigan")
 
 def remove_special_characters(sentence):
     # Use regular expression to keep only letters, periods, and commas
-    sentence_after_removal =  re.sub(r'[^a-zA-Z\s,.\u00C0-\u1EF9]', ' ', sentence)
+    sentence_after_removal =  re.sub(r'[^a-zA-Z\s,.\u00C0-\u1EF9]', ' ,', sentence)
     return sentence_after_removal
 
 from scipy.signal import butter, lfilter
@@ -106,13 +106,13 @@ class Model():
             full_speech = []
             separators = r";|\.|!|\?|\n"
             text = uroman_normalization(text)
+            text = remove_special_characters(text)
             text = text.replace(" ", "▁")
             split_texts = re.split(separators, text)
             
             for split_text in split_texts:
                 
                 if split_text != "▁":
-                    # split_text = remove_special_characters(" ," + split_text) + " ,"
                     split_text = split_text.lower() + "▁"
                     print(split_text)
                     inputs = self.processor.tokenizer(text=split_text, return_tensors="pt")
