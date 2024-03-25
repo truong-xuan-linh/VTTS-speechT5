@@ -1,0 +1,11 @@
+torch==2.1.2
+numpy==1.23.5
+transformers==4.38.2
+uroman-python==1.2.8.1
+datasets==2.16.1
+deepfilternet==0.5.6
+torchaudio==2.1.2
+librosa==0.10.0
+streamlit==1.29.0
+pydub==0.25.1
+speechbrain==0.5.16
