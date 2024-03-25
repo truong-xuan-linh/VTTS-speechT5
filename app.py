@@ -14,6 +14,7 @@ if "model_name" not in st.session_state:
     st.session_state.model_name = None
     st.session_state.audio = None
     st.session_state.wav_file = None
+    st.session_state.speaker_url = ""
     
 with st.sidebar.form("my_form"):
 
@@ -33,15 +34,16 @@ with st.sidebar.form("my_form"):
     speaker_id = st.selectbox("source voice", options= list(dataset_dict.keys()))
     speaker_url = st.text_input("speaker url", value="")
     # speaker_id = st.selectbox("source voice", options= glob.glob("voices/*.wav"))
-    if st.session_state.model_name != model_name :
+    if st.session_state.model_name != model_name or speaker_url != st.session_state.speaker_url :
         st.session_state.model_name = model_name
-        st.session_state.model = Model(model_name=model_name)
+        st.session_state.model = Model(model_name=model_name, speaker_url=speaker_url)
         st.session_state.speaker_id = speaker_id
+        st.session_state.speaker_url = speaker_url
         
     # Every form must have a submit button.
     submitted = st.form_submit_button("Submit")
     if submitted:
-        st.session_state.audio = st.session_state.model.inference(text=text, speaker_id=speaker_id, speaker_url=speaker_url)
+        st.session_state.audio = st.session_state.model.inference(text=text, speaker_id=speaker_id)
         
 audio_holder = st.empty()
 audio_holder.audio(st.session_state.audio, sample_rate=16000)

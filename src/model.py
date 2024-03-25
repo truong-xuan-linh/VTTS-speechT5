@@ -3,7 +3,7 @@ import torch
 import requests
 import torchaudio
 import numpy as np
-from src.reduce_noise import smooth_and_reduce_noise, model_remove_noise, model, df_state
+# from src.reduce_noise import smooth_and_reduce_noise, model_remove_noise, model, df_state
 import io
 from transformers import SpeechT5Processor, SpeechT5ForTextToSpeech, SpeechT5HifiGan
 from pydub import AudioSegment
@@ -60,36 +60,41 @@ def uroman_normalization(string):
 
 class Model():
     
-    def __init__(self, model_name):
+    def __init__(self, model_name, speaker_url=""):
         self.model_name = model_name
         self.processor = SpeechT5Processor.from_pretrained(model_name)
         self.model = SpeechT5ForTextToSpeech.from_pretrained(model_name)
         # self.model.generate = partial(self.model.generate, use_cache=True)
 
         self.model.eval()
+        
+        self.speaker_url = speaker_url
+        if speaker_url:
+            
+            print(f"download speaker_url")
+            response = requests.get(speaker_url)
+            audio_stream = io.BytesIO(response.content)
+            audio_segment = AudioSegment.from_file(audio_stream, format="wav")
+            audio_segment = audio_segment.set_channels(1)
+            audio_segment = audio_segment.set_frame_rate(16000)
+            audio_segment = audio_segment.set_sample_width(2)
+            wavform, _ = torchaudio.load(audio_segment.export())
+            self.speaker_embeddings = create_speaker_embedding(wavform)[0]
+        else:
+            self.speaker_embeddings = None
+        
         if model_name == "truong-xuan-linh/speecht5-vietnamese-commonvoice" or model_name == "truong-xuan-linh/speecht5-irmvivoice":
             self.speaker_embeddings = torch.zeros((1, 512))  # or load xvectors from a file
-        else:
-            self.speaker_embeddings = torch.ones((1, 512))  # or load xvectors from a file
             
-    def inference(self, text, speaker_id=None, speaker_url=""):
+    def inference(self, text, speaker_id=None):
         # if self.model_name == "truong-xuan-linh/speecht5-vietnamese-voiceclone-v2":
         #     # self.speaker_embeddings = torch.tensor(dataset_dict_v2[speaker_id])
         #     wavform, _ = torchaudio.load(speaker_id)
         #     self.speaker_embeddings = create_speaker_embedding(wavform)[0]
             
         if "voiceclone" in self.model_name:
-            if not speaker_url:
+            if not self.speaker_url:
                 self.speaker_embeddings = torch.tensor(dataset_dict[speaker_id])
-            else:
-                response = requests.get(speaker_url)
-                audio_stream = io.BytesIO(response.content)
-                audio_segment = AudioSegment.from_file(audio_stream, format="wav")
-                audio_segment = audio_segment.set_channels(1)
-                audio_segment = audio_segment.set_frame_rate(16000)
-                audio_segment = audio_segment.set_sample_width(2)
-                wavform, _ = torchaudio.load(audio_segment.export())
-                self.speaker_embeddings = create_speaker_embedding(wavform)[0]
             # self.speaker_embeddings = create_speaker_embedding(speaker_id)[0]
             # wavform, _ = torchaudio.load("voices/kcbn1.wav")
             # self.speaker_embeddings = create_speaker_embedding(wavform)[0]
@@ -114,8 +119,8 @@ class Model():
                     speech = self.model.generate_speech(inputs["input_ids"], threshold=0.5, speaker_embeddings=self.speaker_embeddings, vocoder=vocoder)
                     full_speech.append(speech.numpy())
                     # full_speech.append(butter_bandpass_filter(speech.numpy(), lowcut=10, highcut=5000, fs=16000, order=2))
-            out_audio = model_remove_noise(model, df_state, np.concatenate(full_speech))
-            return out_audio
+            # out_audio = model_remove_noise(model, df_state, np.concatenate(full_speech))
+            return np.concatenate(full_speech)
     
     @staticmethod
     def moving_average(data, window_size):
